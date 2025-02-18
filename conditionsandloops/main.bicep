@@ -1,0 +1,80 @@
+@description('The Azure region into which the resources should be deployed.')
+param location string = resourceGroup().location
+
+@secure()
+@description('The administrator login username for the SQL server.')
+param sqlServerAdministratorLogin string
+
+@secure()
+@description('The administrator login password for the SQL server.')
+param sqlServerAdministratorLoginPassword string
+
+@description('The name and tier of the SQL database SKU.')
+param sqlDatabaseSku object = {
+  name: 'Standard'
+  tier: 'Standard'
+}
+
+@description('The name of the environment. This must be Development or Production.')
+@allowed([
+  'Development'
+  'Production'
+])
+param environmentName string = 'Development'
+
+@description('The name of the audit storage account SKU.')
+param auditStorageAccountSkuName string = 'Standard_LRS'
+
+var sqlServerName = 'conditionLoops-${location}${uniqueString(resourceGroup().id)}'
+var sqlDatabaseName = 'conditionLoops01'
+var auditingEnabled = environmentName == 'Production'
+var auditStorageAccountName = take('condloop${uniqueString(resourceGroup().id)}', 24)
+
+resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
+  name: sqlServerName
+  location: location
+  properties: {
+    administratorLogin: sqlServerAdministratorLogin
+    administratorLoginPassword: sqlServerAdministratorLoginPassword
+  }
+}
+
+resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
+  parent: sqlServer
+  name: sqlDatabaseName
+  location: location
+  sku: sqlDatabaseSku
+}
+
+resource auditStorageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = if (auditingEnabled) {
+  name: auditStorageAccountName
+  location: location
+  sku: {
+    name: auditStorageAccountSkuName
+  }
+  kind: 'StorageV2'  
+}
+
+resource sqlServerAudit 'Microsoft.Sql/servers/auditingSettings@2023-08-01-preview' = if (auditingEnabled) {
+  parent: sqlServer
+  name: 'default'
+  properties: {
+    state: 'Enabled'
+    storageEndpoint: environmentName == 'Production' ? auditStorageAccount.properties.primaryEndpoints.blob : ''
+    storageAccountAccessKey: environmentName == 'Production' ? listKeys(auditStorageAccount.id, auditStorageAccount.apiVersion).keys[0].value : ''
+  }
+}
+
+// Connect-AzAccount
+// $context = Get-AzSubscription -SubscriptionName 'Concierge Subscription'
+// Set-AzContext $context
+// Get-AzSubscription
+// $context = Get-AzSubscription -SubscriptionId {Your subscription ID}
+// Set-AzContext $context
+// Set-AzDefault -ResourceGroupName [sandbox resource group name]
+
+// New-AzResourceGroupDeployment -TemplateFile main.bicep
+// New-AzResourceGroupDeployment -TemplateFile main.bicep -environmentName Production
+
+//mkadmin
+//5c:u%%9S!-V}jYv*
