@@ -1,4 +1,5 @@
-
+// 4.Create an Azure Load Balancer within a dedicated virtual network and subnet 
+// and integrate it with a Log Analytics workspace. Implement this configuration in a module format.
 
 param Location string = resourceGroup().location
 param vnetName string = 'mkvnet'
