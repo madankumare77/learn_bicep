@@ -1,0 +1,10 @@
+{
+    "moduleAliases": {
+      "br": {
+        "ToyCompanyRegistry": {
+          "registry": "acrmklv5zjckjoctgm.azurecr.io"
+        }
+      }
+    }
+  }
+

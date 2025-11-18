@@ -1,0 +1,315 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.32.4.45862",
+      "templateHash": "16946471172214388564"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "The Azure region into which the resources should be deployed."
+      }
+    },
+    "environmentType": {
+      "type": "string",
+      "allowedValues": [
+        "nonprod",
+        "prod"
+      ],
+      "metadata": {
+        "description": "The type of environment. This must be nonprod or prod."
+      }
+    },
+    "appServiceAppName": {
+      "type": "string",
+      "defaultValue": "[format('toyweb-{0}', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "The name of the App Service app. This name must be globally unique."
+      }
+    },
+    "cosmosDBAccountName": {
+      "type": "string",
+      "defaultValue": "[format('toyweb-{0}', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "The name of the Cosmos DB account. This name must be globally unique."
+      }
+    },
+    "storageAccountReady": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Specifies whether the storage account is ready to be deployed."
+      }
+    }
+  },
+  "variables": {
+    "storageAccountName": "[format('mkst-{0}', uniqueString(resourceGroup().id))]",
+    "storageAccountSkuName": "[if(equals(parameters('environmentType'), 'prod'), 'Standard_GRS', 'Standard_LRS')]",
+    "processOrderQueueName": "processorder"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageAccountName'), 'default', variables('processOrderQueueName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[variables('storageAccountSkuName')]"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "app-service",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environmentType": {
+            "value": "[parameters('environmentType')]"
+          },
+          "appServiceAppName": {
+            "value": "[parameters('appServiceAppName')]"
+          },
+          "storageAccountName": {
+            "value": "[variables('storageAccountName')]"
+          },
+          "processOrderQueueName": {
+            "value": "[variables('processOrderQueueName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.32.4.45862",
+              "templateHash": "4751848642357792108"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The Azure region into which the resources should be deployed."
+              }
+            },
+            "environmentType": {
+              "type": "string",
+              "allowedValues": [
+                "nonprod",
+                "prod"
+              ],
+              "metadata": {
+                "description": "The type of environment. This must be nonprod or prod."
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the storage account to deploy. This name must be globally unique."
+              }
+            },
+            "processOrderQueueName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the queue to deploy for processing orders."
+              }
+            },
+            "appServiceAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the App Service app. This name must be globally unique."
+              }
+            }
+          },
+          "variables": {
+            "appServicePlanName": "toy-website-plan",
+            "appServicePlanSkuName": "[if(equals(parameters('environmentType'), 'prod'), 'P2v3', 'F1')]",
+            "appServicePlanTierName": "[if(equals(parameters('environmentType'), 'prod'), 'PremiumV3', 'Free')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2023-12-01",
+              "name": "[variables('appServicePlanName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[variables('appServicePlanSkuName')]",
+                "tier": "[variables('appServicePlanTierName')]"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2023-12-01",
+              "name": "[parameters('appServiceAppName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+                "httpsOnly": true,
+                "siteConfig": {
+                  "appSettings": [
+                    {
+                      "name": "StorageAccountName",
+                      "value": "[parameters('storageAccountName')]"
+                    },
+                    {
+                      "name": "ProcessOrderQueueName",
+                      "value": "[parameters('processOrderQueueName')]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/queueServices/queues', variables('storageAccountName'), 'default', variables('processOrderQueueName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "cosmos-db",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environmentType": {
+            "value": "[parameters('environmentType')]"
+          },
+          "cosmosDBAccountName": {
+            "value": "[parameters('cosmosDBAccountName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.32.4.45862",
+              "templateHash": "18405703793006704143"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The Azure region into which the resources should be deployed."
+              }
+            },
+            "environmentType": {
+              "type": "string",
+              "allowedValues": [
+                "nonprod",
+                "prod"
+              ],
+              "metadata": {
+                "description": "The type of environment. This must be nonprod or prod."
+              }
+            },
+            "cosmosDBAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the Cosmos DB account. This name must be globally unique."
+              }
+            }
+          },
+          "variables": {
+            "cosmosDBDatabaseName": "ProductCatalog",
+            "cosmosDBDatabaseThroughput": "[if(equals(parameters('environmentType'), 'prod'), 1000, 400)]",
+            "cosmosDBContainerName": "Products",
+            "cosmosDBContainerPartitionKey": "/productid"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}/{2}', parameters('cosmosDBAccountName'), variables('cosmosDBDatabaseName'), variables('cosmosDBContainerName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[variables('cosmosDBContainerName')]",
+                  "partitionKey": {
+                    "kind": "Hash",
+                    "paths": [
+                      "[variables('cosmosDBContainerPartitionKey')]"
+                    ]
+                  }
+                },
+                "options": {}
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDBAccountName'), variables('cosmosDBDatabaseName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2024-05-15",
+              "name": "[parameters('cosmosDBAccountName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "databaseAccountOfferType": "Standard",
+                "locations": [
+                  {
+                    "locationName": "[parameters('location')]"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}', parameters('cosmosDBAccountName'), variables('cosmosDBDatabaseName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[variables('cosmosDBDatabaseName')]"
+                },
+                "options": {
+                  "throughput": "[variables('cosmosDBDatabaseThroughput')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBAccountName'))]"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
