@@ -1,0 +1,103 @@
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureServiceConnection: 'adoadfconnection'
+  subscriptionId: 'ee485719-86dd-43c5-ab00-4ae86ea6ffd5'
+  resourceGroupName: 'rg-infy-terraform'
+  dataFactoryName: 'mk-without-git'
+  location: 'CentralIndia'
+
+  armTemplateFile: 'mk-with-git/ARMTemplateForFactory.json'
+  armParameterFile: 'parameters/testdr.parameters.json'
+
+stages:
+
+# -----------------------------------------------------
+# DEPLOYMENT
+# -----------------------------------------------------
+
+- stage: DeployProd
+  displayName: Deploy To Test DR
+  jobs:
+  - job: DeployADF
+    steps:
+    - checkout: self
+    # -------------------------------
+    # Stop Triggers
+    # -------------------------------
+    - task: AzurePowerShell@5
+      displayName: Stop ADF Triggers
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        ScriptType: InlineScript
+        azurePowerShellVersion: LatestVersion
+        Inline: |
+          Import-Module Az.DataFactory -Force
+          Set-AzContext -SubscriptionId "$(subscriptionId)"
+         
+          $triggers = Get-AzDataFactoryV2Trigger `
+            -ResourceGroupName "$(resourceGroupName)" `
+            -DataFactoryName "$(dataFactoryName)"
+         
+          if ($triggers.Count -eq 0) {
+              Write-Host "No triggers found in $(dataFactoryName)"
+          }
+         
+          foreach($trigger in $triggers)
+          {
+              if($trigger.RuntimeState -eq "Started")
+              {
+                  Stop-AzDataFactoryV2Trigger `
+                    -ResourceGroupName "$(resourceGroupName)" `
+                    -DataFactoryName "$(dataFactoryName)" `
+                    -Name $trigger.Name `
+                    -Force
+                  Write-Host "Stopped Trigger: $($trigger.Name)"
+              }
+          }
+       
+    # -------------------------------
+    # Deploy ARM
+    # -------------------------------
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: Deploy ARM Template
+      inputs:
+        deploymentScope: Resource Group
+        azureResourceManagerConnection: $(azureServiceConnection)
+        subscriptionId: $(subscriptionId)
+        action: Create Or Update Resource Group
+        resourceGroupName: $(resourceGroupName)
+        location: $(location)
+        templateLocation: Linked artifact
+        csmFile: $(armTemplateFile)
+        csmParametersFile: $(armParameterFile)
+        deploymentMode: Incremental
+    # -------------------------------
+    # Start Triggers
+    # -------------------------------
+    - task: AzurePowerShell@5
+      displayName: Start ADF Triggers
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        ScriptType: InlineScript
+        azurePowerShellVersion: LatestVersion
+        Inline: |
+          Import-Module Az.DataFactory -Force
+          Set-AzContext -SubscriptionId "$(subscriptionId)"
+         
+          $triggers = Get-AzDataFactoryV2Trigger `
+            -ResourceGroupName "$(resourceGroupName)" `
+            -DataFactoryName "$(dataFactoryName)"
+         
+          foreach($trigger in $triggers)
+          {
+              Start-AzDataFactoryV2Trigger `
+                -ResourceGroupName "$(resourceGroupName)" `
+                -DataFactoryName "$(dataFactoryName)" `
+                -Name $trigger.Name `
+                -Force
+              Write-Host "Started Trigger: $($trigger.Name)"
+          }
