@@ -9,6 +9,7 @@ variables:
   resourceGroupName: 'rg-infy-terraform'
   dataFactoryName: 'mk-without-git'
   location: 'CentralIndia'
+  keyVaultName: 'kv-infy-terraform'
 
   armTemplateFile: 'mk-with-git/ARMTemplateForFactory.json'
   armParameterFile: 'parameters/testdr.parameters.json'
@@ -101,3 +102,40 @@ stages:
                 -Force
               Write-Host "Started Trigger: $($trigger.Name)"
           }
+
+    # -------------------------------
+    # Create Azure Key Vault
+    # -------------------------------
+    - task: AzureCLI@2
+      displayName: Create Azure Key Vault
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          echo "Checking whether Key Vault $(keyVaultName) exists..."
+
+          if az keyvault show \
+            --name "$(keyVaultName)" \
+            --resource-group "$(resourceGroupName)" \
+            --subscription "$(subscriptionId)" \
+            > /dev/null 2>&1; then
+
+            echo "Key Vault $(keyVaultName) already exists."
+            echo "Skipping Key Vault creation."
+
+          else
+
+            echo "Key Vault $(keyVaultName) does not exist."
+            echo "Creating Key Vault..."
+
+            az keyvault create \
+              --name "$(keyVaultName)" \
+              --resource-group "$(resourceGroupName)" \
+              --location "$(location)" \
+              --subscription "$(subscriptionId)" \
+              --enable-rbac-authorization true
+
+            echo "Key Vault $(keyVaultName) created successfully."
+
+          fi
