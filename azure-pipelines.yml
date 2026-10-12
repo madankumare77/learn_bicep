@@ -177,6 +177,27 @@ stages:
 
           fi
 
+    # -----------------------------------------------------
+    # Create Key Vault
+    # -----------------------------------------------------
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: Create Key Vault
+      continueOnError: true
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: $(azureServiceConnection)
+        subscriptionId: $(subscriptionId)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: $(resourceGroupName)
+        location: $(location)
+        templateLocation: 'Linked artifact'
+        csmFile: 'templates/keyvault.json'
+        overrideParameters: >
+          -keyVaultName "$(keyVaultName)"
+          -location "$(location)"
+        deploymentMode: 'Incremental'
+        deploymentName: 'Deploy-KeyVault'
+
      # -------------------------------
     # Delete Storage Account
     # -------------------------------
