@@ -177,43 +177,19 @@ stages:
 
           fi
 
-    # -------------------------------
+     # -------------------------------
     # Delete Storage Account
     # -------------------------------
     - task: AzureCLI@2
-      displayName: Delete Storage Account
+      displayName: Delete Storage Account - rginfyterraformab48
       inputs:
         azureSubscription: $(azureServiceConnection)
         scriptType: bash
         scriptLocation: inlineScript
         inlineScript: |
-          echo "Checking storage account rginfyterraformab48..."
 
-          STORAGE_EXISTS=$(az storage account check-name \
-            --name "rginfyterraformab48" \
-            --query "reason" \
-            --output tsv)
-
-          if az storage account show \
+          az storage account delete \
             --name "rginfyterraformab48" \
             --resource-group "$(resourceGroupName)" \
             --subscription "$(subscriptionId)" \
-            > /dev/null 2>&1; then
-
-            echo "Storage account rginfyterraformab48 exists."
-            echo "Deleting storage account..."
-
-            az storage account delete \
-              --name "rginfyterraformab48" \
-              --resource-group "$(resourceGroupName)" \
-              --subscription "$(subscriptionId)" \
-              --yes
-
-            echo "Storage account rginfyterraformab48 deleted successfully."
-
-          else
-
-            echo "Storage account rginfyterraformab48 does not exist in $(resourceGroupName)."
-            echo "Skipping deletion."
-
-          fi
+            --yes
