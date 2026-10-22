@@ -155,29 +155,16 @@ stages:
           echo "##vso[task.setvariable variable=adfId]$ADF_ID"
     
     # -------------------------------
-    # Create Azure Key Vault
+    # Create Azure Key Vault Bash Script
     # -------------------------------
     - task: AzureCLI@2
       displayName: Create Azure Key Vault
+      continueOnError: true
       inputs:
         azureSubscription: $(azureServiceConnection)
         scriptType: bash
         scriptLocation: inlineScript
         inlineScript: |
-          echo "Checking whether Key Vault $(keyVaultName) exists..."
-
-          if az keyvault show \
-            --name "$(keyVaultName)" \
-            --resource-group "$(resourceGroupName)" \
-            --subscription "$(subscriptionId)" \
-            > /dev/null 2>&1; then
-
-            echo "Skipping Key Vault creation."
-
-          else
-
-            echo "Creating Key Vault..."
-
             az keyvault create \
               --name "$(keyVaultName)" \
               --resource-group "$(resourceGroupName)" \
@@ -185,39 +172,8 @@ stages:
               --subscription "$(subscriptionId)" \
               --enable-rbac-authorization true
 
-          fi
-
-    # -------------------------------
-    # Verify Existing AKS Cluster
-    # -------------------------------
-    - task: AzureCLI@2
-      displayName: Verify AKS Exists in Resource Group
-      inputs:
-        azureSubscription: $(azureServiceConnection)
-        scriptType: bash
-        scriptLocation: inlineScript
-        inlineScript: |
-          echo "Checking for existing AKS clusters..."
-          echo "Resource Group: $(resourceGroupName)"
-
-          AKS_COUNT=$(az aks list \
-            --resource-group "$(resourceGroupName)" \
-            --subscription "$(subscriptionId)" \
-            --query "length(@)" \
-            --output tsv)
-
-          if [ "$AKS_COUNT" -gt 0 ]; then
-
-            az aks list \
-              --resource-group "$(resourceGroupName)" \
-              --subscription "$(subscriptionId)" \
-              --query "[].{Name:name, Location:location, KubernetesVersion:kubernetesVersion, ProvisioningState:provisioningState}" \
-              --output table
-
-          fi
-
     # -----------------------------------------------------
-    # Create Key Vault
+    # Create Key Vault ARM Template Deployment
     # -----------------------------------------------------
     - task: AzureResourceManagerTemplateDeployment@3
       displayName: Create Key Vault
