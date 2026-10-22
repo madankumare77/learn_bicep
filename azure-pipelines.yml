@@ -121,12 +121,10 @@ stages:
             --subscription "$(subscriptionId)" \
             > /dev/null 2>&1; then
 
-            echo "Key Vault $(keyVaultName) already exists."
             echo "Skipping Key Vault creation."
 
           else
 
-            echo "Key Vault $(keyVaultName) does not exist."
             echo "Creating Key Vault..."
 
             az keyvault create \
@@ -135,8 +133,6 @@ stages:
               --location "$(location)" \
               --subscription "$(subscriptionId)" \
               --enable-rbac-authorization true
-
-            echo "Key Vault $(keyVaultName) created successfully."
 
           fi
 
@@ -161,19 +157,11 @@ stages:
 
           if [ "$AKS_COUNT" -gt 0 ]; then
 
-            echo "AKS cluster already exists in resource group $(resourceGroupName)."
-
-            echo "Existing AKS cluster(s):"
-
             az aks list \
               --resource-group "$(resourceGroupName)" \
               --subscription "$(subscriptionId)" \
               --query "[].{Name:name, Location:location, KubernetesVersion:kubernetesVersion, ProvisioningState:provisioningState}" \
               --output table
-
-          else
-
-            echo "No AKS cluster exists in resource group $(resourceGroupName)."
 
           fi
 
