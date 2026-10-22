@@ -10,6 +10,7 @@ variables:
   dataFactoryName: 'mk-without-git'
   location: 'CentralIndia'
   keyVaultName: 'kv-infy-terraform'
+  managedIdentityName: 'function-identity'
 
   armTemplateFile: 'mk-with-git/ARMTemplateForFactory.json'
   armParameterFile: 'parameters/testdr.parameters.json'
@@ -103,6 +104,56 @@ stages:
               Write-Host "Started Trigger: $($trigger.Name)"
           }
 
+    # -------------------------------
+    # Get Existing Managed Identity ID
+    # -------------------------------
+    - task: AzureCLI@2
+      displayName: 'Get Existing Managed Identity ID'
+      continueOnError: true
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Getting existing Managed Identity..."
+    
+          MI_ID=$(az identity show \
+            --name "$(managedIdentityName)" \
+            --resource-group "$(resourceGroupName)" \
+            --query "id" \
+            --output tsv)
+    
+          echo "Managed Identity Resource ID:"
+          echo "$MI_ID"
+    
+          # Store for subsequent tasks
+          echo "##vso[task.setvariable variable=managedIdentityId]$MI_ID"
+
+    # -------------------------------
+    # Get Existing ADF ID
+    # -------------------------------
+    - task: AzureCLI@2
+      displayName: 'Get Existing ADF ID'
+      continueOnError: true
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Getting existing Azure Data Factory..."
+    
+          ADF_ID=$(az datafactory show \
+            --name "$(dataFactoryName)" \
+            --resource-group "$(resourceGroupName)" \
+            --query "id" \
+            --output tsv)
+    
+          echo "ADF Resource ID:"
+          echo "$ADF_ID"
+    
+          # Store for subsequent tasks
+          echo "##vso[task.setvariable variable=adfId]$ADF_ID"
+    
     # -------------------------------
     # Create Azure Key Vault
     # -------------------------------
