@@ -158,7 +158,7 @@ stages:
     # Create Azure Key Vault Bash Script
     # -------------------------------
     - task: AzureCLI@2
-      displayName: Create Azure Key Vault
+      displayName: Create Azure Key Vault Bash Script
       continueOnError: true
       inputs:
         azureSubscription: $(azureServiceConnection)
@@ -176,7 +176,7 @@ stages:
     # Create Key Vault ARM Template Deployment
     # -----------------------------------------------------
     - task: AzureResourceManagerTemplateDeployment@3
-      displayName: Create Key Vault
+      displayName: Create Key Vault ARM Template Deployment
       continueOnError: true
       inputs:
         deploymentScope: 'Resource Group'
@@ -197,7 +197,7 @@ stages:
     # Delete Storage Account
     # -------------------------------
     - task: AzureCLI@2
-      displayName: Delete Storage Account - rginfyterraformab48
+      displayName: Delete Existing Storage Account - rginfyterraformab48
       inputs:
         azureSubscription: $(azureServiceConnection)
         scriptType: bash
