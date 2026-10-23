@@ -32,7 +32,7 @@ stages:
       displayName: 'Delete ADF'
       continueOnError: true
       inputs:
-        azureSubscription: '$(serviceConnection)'
+        azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
