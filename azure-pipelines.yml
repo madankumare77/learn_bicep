@@ -27,185 +27,195 @@ stages:
   - job: DeployADF
     steps:
     - checkout: self
+
+    - task: AzureCLI@2
+      displayName: 'Delete ADF'
+      continueOnError: true
+      inputs:
+        azureSubscription: '$(serviceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az datafactory delete --name "$(dataFactoryName)" --resource-group "$(resourceGroupName)" --yes
     # -------------------------------
     # Stop Triggers
     # -------------------------------
-    - task: AzurePowerShell@5
-      displayName: Stop ADF Triggers
-      inputs:
-        azureSubscription: $(azureServiceConnection)
-        ScriptType: InlineScript
-        azurePowerShellVersion: LatestVersion
-        Inline: |
-          Import-Module Az.DataFactory -Force
-          Set-AzContext -SubscriptionId "$(subscriptionId)"
+    # - task: AzurePowerShell@5
+    #   displayName: Stop ADF Triggers
+    #   inputs:
+    #     azureSubscription: $(azureServiceConnection)
+    #     ScriptType: InlineScript
+    #     azurePowerShellVersion: LatestVersion
+    #     Inline: |
+    #       Import-Module Az.DataFactory -Force
+    #       Set-AzContext -SubscriptionId "$(subscriptionId)"
          
-          $triggers = Get-AzDataFactoryV2Trigger `
-            -ResourceGroupName "$(resourceGroupName)" `
-            -DataFactoryName "$(dataFactoryName)"
+    #       $triggers = Get-AzDataFactoryV2Trigger `
+    #         -ResourceGroupName "$(resourceGroupName)" `
+    #         -DataFactoryName "$(dataFactoryName)"
          
-          if ($triggers.Count -eq 0) {
-              Write-Host "No triggers found in $(dataFactoryName)"
-          }
+    #       if ($triggers.Count -eq 0) {
+    #           Write-Host "No triggers found in $(dataFactoryName)"
+    #       }
          
-          foreach($trigger in $triggers)
-          {
-              if($trigger.RuntimeState -eq "Started")
-              {
-                  Stop-AzDataFactoryV2Trigger `
-                    -ResourceGroupName "$(resourceGroupName)" `
-                    -DataFactoryName "$(dataFactoryName)" `
-                    -Name $trigger.Name `
-                    -Force
-                  Write-Host "Stopped Trigger: $($trigger.Name)"
-              }
-          }
+    #       foreach($trigger in $triggers)
+    #       {
+    #           if($trigger.RuntimeState -eq "Started")
+    #           {
+    #               Stop-AzDataFactoryV2Trigger `
+    #                 -ResourceGroupName "$(resourceGroupName)" `
+    #                 -DataFactoryName "$(dataFactoryName)" `
+    #                 -Name $trigger.Name `
+    #                 -Force
+    #               Write-Host "Stopped Trigger: $($trigger.Name)"
+    #           }
+    #       }
        
-    # -------------------------------
-    # Deploy ARM
-    # -------------------------------
-    - task: AzureResourceManagerTemplateDeployment@3
-      displayName: Deploy ARM Template
-      inputs:
-        deploymentScope: Resource Group
-        azureResourceManagerConnection: $(azureServiceConnection)
-        subscriptionId: $(subscriptionId)
-        action: Create Or Update Resource Group
-        resourceGroupName: $(resourceGroupName)
-        location: $(location)
-        templateLocation: Linked artifact
-        csmFile: $(armTemplateFile)
-        csmParametersFile: $(armParameterFile)
-        deploymentMode: Incremental
-    # -------------------------------
-    # Start Triggers
-    # -------------------------------
-    - task: AzurePowerShell@5
-      displayName: Start ADF Triggers
-      inputs:
-        azureSubscription: $(azureServiceConnection)
-        ScriptType: InlineScript
-        azurePowerShellVersion: LatestVersion
-        Inline: |
-          Import-Module Az.DataFactory -Force
-          Set-AzContext -SubscriptionId "$(subscriptionId)"
+    # # -------------------------------
+    # # Deploy ARM
+    # # -------------------------------
+    # - task: AzureResourceManagerTemplateDeployment@3
+    #   displayName: Deploy ARM Template
+    #   inputs:
+    #     deploymentScope: Resource Group
+    #     azureResourceManagerConnection: $(azureServiceConnection)
+    #     subscriptionId: $(subscriptionId)
+    #     action: Create Or Update Resource Group
+    #     resourceGroupName: $(resourceGroupName)
+    #     location: $(location)
+    #     templateLocation: Linked artifact
+    #     csmFile: $(armTemplateFile)
+    #     csmParametersFile: $(armParameterFile)
+    #     deploymentMode: Incremental
+    # # -------------------------------
+    # # Start Triggers
+    # # -------------------------------
+    # - task: AzurePowerShell@5
+    #   displayName: Start ADF Triggers
+    #   inputs:
+    #     azureSubscription: $(azureServiceConnection)
+    #     ScriptType: InlineScript
+    #     azurePowerShellVersion: LatestVersion
+    #     Inline: |
+    #       Import-Module Az.DataFactory -Force
+    #       Set-AzContext -SubscriptionId "$(subscriptionId)"
          
-          $triggers = Get-AzDataFactoryV2Trigger `
-            -ResourceGroupName "$(resourceGroupName)" `
-            -DataFactoryName "$(dataFactoryName)"
+    #       $triggers = Get-AzDataFactoryV2Trigger `
+    #         -ResourceGroupName "$(resourceGroupName)" `
+    #         -DataFactoryName "$(dataFactoryName)"
          
-          foreach($trigger in $triggers)
-          {
-              Start-AzDataFactoryV2Trigger `
-                -ResourceGroupName "$(resourceGroupName)" `
-                -DataFactoryName "$(dataFactoryName)" `
-                -Name $trigger.Name `
-                -Force
-              Write-Host "Started Trigger: $($trigger.Name)"
-          }
+    #       foreach($trigger in $triggers)
+    #       {
+    #           Start-AzDataFactoryV2Trigger `
+    #             -ResourceGroupName "$(resourceGroupName)" `
+    #             -DataFactoryName "$(dataFactoryName)" `
+    #             -Name $trigger.Name `
+    #             -Force
+    #           Write-Host "Started Trigger: $($trigger.Name)"
+    #       }
 
-    # -------------------------------
-    # Get Existing Managed Identity ID
-    # -------------------------------
-    - task: AzureCLI@2
-      displayName: 'Get Existing Managed Identity ID'
-      continueOnError: true
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          echo "Getting existing Managed Identity..."
+    # # -------------------------------
+    # # Get Existing Managed Identity ID
+    # # -------------------------------
+    # - task: AzureCLI@2
+    #   displayName: 'Get Existing Managed Identity ID'
+    #   continueOnError: true
+    #   inputs:
+    #     azureSubscription: '$(azureServiceConnection)'
+    #     scriptType: 'bash'
+    #     scriptLocation: 'inlineScript'
+    #     inlineScript: |
+    #       echo "Getting existing Managed Identity..."
     
-          MI_ID=$(az identity show \
-            --name "$(managedIdentityName)" \
-            --resource-group "$(resourceGroupName)" \
-            --query "id" \
-            --output tsv)
+    #       MI_ID=$(az identity show \
+    #         --name "$(managedIdentityName)" \
+    #         --resource-group "$(resourceGroupName)" \
+    #         --query "id" \
+    #         --output tsv)
     
-          echo "Managed Identity Resource ID:"
-          echo "$MI_ID"
+    #       echo "Managed Identity Resource ID:"
+    #       echo "$MI_ID"
     
-          # Store for subsequent tasks
-          echo "##vso[task.setvariable variable=managedIdentityId]$MI_ID"
+    #       # Store for subsequent tasks
+    #       echo "##vso[task.setvariable variable=managedIdentityId]$MI_ID"
 
-    # -------------------------------
-    # Get Existing ADF ID
-    # -------------------------------
-    - task: AzureCLI@2
-      displayName: 'Get Existing ADF ID'
-      continueOnError: true
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          echo "Getting existing Azure Data Factory..."
+    # # -------------------------------
+    # # Get Existing ADF ID
+    # # -------------------------------
+    # - task: AzureCLI@2
+    #   displayName: 'Get Existing ADF ID'
+    #   continueOnError: true
+    #   inputs:
+    #     azureSubscription: '$(azureServiceConnection)'
+    #     scriptType: 'bash'
+    #     scriptLocation: 'inlineScript'
+    #     inlineScript: |
+    #       echo "Getting existing Azure Data Factory..."
     
-          ADF_ID=$(az datafactory show \
-            --name "$(dataFactoryName)" \
-            --resource-group "$(resourceGroupName)" \
-            --query "id" \
-            --output tsv)
+    #       ADF_ID=$(az datafactory show \
+    #         --name "$(dataFactoryName)" \
+    #         --resource-group "$(resourceGroupName)" \
+    #         --query "id" \
+    #         --output tsv)
     
-          echo "ADF Resource ID:"
-          echo "$ADF_ID"
+    #       echo "ADF Resource ID:"
+    #       echo "$ADF_ID"
     
-          # Store for subsequent tasks
-          echo "##vso[task.setvariable variable=adfId]$ADF_ID"
+    #       # Store for subsequent tasks
+    #       echo "##vso[task.setvariable variable=adfId]$ADF_ID"
     
-    # -------------------------------
-    # Create Azure Key Vault Bash Script
-    # -------------------------------
-    - task: AzureCLI@2
-      displayName: Create Azure Key Vault Bash Script
-      continueOnError: true
-      inputs:
-        azureSubscription: $(azureServiceConnection)
-        scriptType: bash
-        scriptLocation: inlineScript
-        inlineScript: |
-            az keyvault create \
-              --name "$(keyVaultName)" \
-              --resource-group "$(resourceGroupName)" \
-              --location "$(location)" \
-              --subscription "$(subscriptionId)" \
-              --enable-rbac-authorization true
+    # # -------------------------------
+    # # Create Azure Key Vault Bash Script
+    # # -------------------------------
+    # - task: AzureCLI@2
+    #   displayName: Create Azure Key Vault Bash Script
+    #   continueOnError: true
+    #   inputs:
+    #     azureSubscription: $(azureServiceConnection)
+    #     scriptType: bash
+    #     scriptLocation: inlineScript
+    #     inlineScript: |
+    #         az keyvault create \
+    #           --name "$(keyVaultName)" \
+    #           --resource-group "$(resourceGroupName)" \
+    #           --location "$(location)" \
+    #           --subscription "$(subscriptionId)" \
+    #           --enable-rbac-authorization true
 
-    # -----------------------------------------------------
-    # Create Key Vault ARM Template Deployment
-    # -----------------------------------------------------
-    - task: AzureResourceManagerTemplateDeployment@3
-      displayName: Create Key Vault ARM Template Deployment
-      continueOnError: true
-      inputs:
-        deploymentScope: 'Resource Group'
-        azureResourceManagerConnection: $(azureServiceConnection)
-        subscriptionId: $(subscriptionId)
-        action: 'Create Or Update Resource Group'
-        resourceGroupName: $(resourceGroupName)
-        location: $(location)
-        templateLocation: 'Linked artifact'
-        csmFile: 'templates/keyvault.json'
-        overrideParameters: >
-          -keyVaultName "$(keyVaultName)"
-          -location "$(location)"
-        deploymentMode: 'Incremental'
-        deploymentName: 'Deploy-KeyVault'
+    # # -----------------------------------------------------
+    # # Create Key Vault ARM Template Deployment
+    # # -----------------------------------------------------
+    # - task: AzureResourceManagerTemplateDeployment@3
+    #   displayName: Create Key Vault ARM Template Deployment
+    #   continueOnError: true
+    #   inputs:
+    #     deploymentScope: 'Resource Group'
+    #     azureResourceManagerConnection: $(azureServiceConnection)
+    #     subscriptionId: $(subscriptionId)
+    #     action: 'Create Or Update Resource Group'
+    #     resourceGroupName: $(resourceGroupName)
+    #     location: $(location)
+    #     templateLocation: 'Linked artifact'
+    #     csmFile: 'templates/keyvault.json'
+    #     overrideParameters: >
+    #       -keyVaultName "$(keyVaultName)"
+    #       -location "$(location)"
+    #     deploymentMode: 'Incremental'
+    #     deploymentName: 'Deploy-KeyVault'
 
-     # -------------------------------
-    # Delete Storage Account
-    # -------------------------------
-    - task: AzureCLI@2
-      displayName: Delete Existing Storage Account - rginfyterraformab48
-      inputs:
-        azureSubscription: $(azureServiceConnection)
-        scriptType: bash
-        scriptLocation: inlineScript
-        inlineScript: |
+    #  # -------------------------------
+    # # Delete Storage Account
+    # # -------------------------------
+    # - task: AzureCLI@2
+    #   displayName: Delete Existing Storage Account - rginfyterraformab48
+    #   inputs:
+    #     azureSubscription: $(azureServiceConnection)
+    #     scriptType: bash
+    #     scriptLocation: inlineScript
+    #     inlineScript: |
 
-          az storage account delete \
-            --name "rginfyterraformab48" \
-            --resource-group "$(resourceGroupName)" \
-            --subscription "$(subscriptionId)" \
-            --yes
+    #       az storage account delete \
+    #         --name "rginfyterraformab48" \
+    #         --resource-group "$(resourceGroupName)" \
+    #         --subscription "$(subscriptionId)" \
+    #         --yes
